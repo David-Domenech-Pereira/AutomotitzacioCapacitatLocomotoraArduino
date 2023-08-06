@@ -1,3 +1,4 @@
+
 #include <Wire.h>
 #include <EEPROM.h>
 #include <SPI.h>
@@ -5,14 +6,14 @@
 #include <ArduinoJson.h> // Instala esta librería desde el Administrador de Librerías de Arduino
 #include <Arduino_LSM6DS3.h>
 
-#define MAX_VALORS 50 // Quan arribem a aquest número de valors els enviarà al servidor
-
+#define MAX_VALORS 20 // Quan arribem a aquest número de valors els enviarà al servidor
+#define OFFSET 300 // Cada quants ms es fa una medició
 typedef struct
 {
   float x;
   float y;
   float z;
-  double timestamp;
+  long timestamp;
 } dades_t;
 
 const char *ssid = "URV";                                                     // Nombre de  red WiFi
@@ -21,7 +22,7 @@ const char *serverUrl = "smarttechnologiesurv.000webhostapp.com";             //
 const char *worldTimeApiUrl = "http://worldtimeapi.org/api/timezone/Etc/UTC"; // URL de worldtimeapi.org
 
 dades_t valores[MAX_VALORS];
-long double TIME;
+long TIME;
 int last_valor = 0;
 void setup()
 {
@@ -54,7 +55,7 @@ void setup()
   Serial.println(WiFi.localIP());
 
   // com no podem saber la hora, agafarem quina hora és a l'encendre's
-  TIME = getCurrentTime();
+  TIME = getCurrentTime(); //multipliquem per 1000 per no tenir decimals i passem a ms
 }
 String paramGetRequest(const char *url, const char *endpoint, String param)
 {
@@ -119,7 +120,7 @@ String paramGetRequest(const char *url, const char *endpoint, String param)
   // Obtener el tiempo UTC en formato UNIX timestamp
   return json[param];
 }
-long double getCurrentTime()
+long getCurrentTime()
 {
 
   // Obtener el tiempo UTC en formato UNIX timestamp
@@ -129,7 +130,7 @@ long double getCurrentTime()
   Serial.print("UTC Timestamp: ");
   Serial.println(str_utcTime);
   // convertimos utcTime a long
-  long double utcTimeLong = str_utcTime.toInt();
+  long utcTimeLong = str_utcTime.toInt();
   return utcTimeLong;
 }
 void loop()
@@ -144,7 +145,7 @@ void loop()
   
 
 
-    escriure.timestamp = TIME;
+    escriure.timestamp = millis(); //ms since the program started
  
     escriure.x = accelX;
     escriure.y = accelY;
@@ -153,15 +154,13 @@ void loop()
     // inserim el valor al final
     valores[last_valor] = escriure;
     last_valor++;
-   
-      TIME+=0.100; //sumamos el delay
-      Serial.println(TIME);
+
   }
   else
   {
     Serial.println("Acceleration not available");
   }
-  delay(100); // esperem 100 ms
+  delay(OFFSET); // esperem 100 ms
   // Verificar si hay conexión WiFi para enviar los datos
   if (last_valor >= MAX_VALORS && WiFi.status() == WL_CONNECTED)
   {
@@ -231,8 +230,7 @@ String getToken(){
         return;
       }
     }
-    if (doc.containsKey("token"))
-    {
+    
       // Get a reference to the "token" value.
       const JsonVariant &tokenVariant = doc["token"];
 
@@ -249,14 +247,8 @@ String getToken(){
         // Handle the case when the "token" value is not of type `const char*`.
         Serial.println("Token value is not a const char*.");
       }
-    }
-    else
-    {
-      // Handle the case when the "token" key does not exist in the JSON.
-
-      Serial.println("Token key not found in JSON.");
-      return; // no se puede mandar
-    }
+    
+    
      // Cerrar la conexión
   client.stop();
   }
@@ -274,6 +266,7 @@ void sendDataToWeb()
   DynamicJsonDocument jsonDoc(1024);
 // Add the "sensor" field
 jsonDoc["sensor"] = 1;
+jsonDoc["start"]=TIME;
 // Add data to the JSON document
 JsonArray data = jsonDoc.createNestedArray("data");
 for (int i = 0; i < MAX_VALORS; i++) {
@@ -294,7 +287,7 @@ serializeJson(jsonDoc, dataToSend);
   // Realizar la solicitud HTTP POST
   if (client.connect(serverUrl, 80))
   {
-    client.println("POST /api/sensorData.php HTTP/1.1");
+    client.println("POST /api/sensorData.php?ms=1 HTTP/1.1");
     client.println("Host: " + String(serverUrl));
     client.println("Content-Type: application/json");
     
