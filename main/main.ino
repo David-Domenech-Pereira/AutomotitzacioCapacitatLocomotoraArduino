@@ -6,7 +6,7 @@
 #include <ArduinoJson.h> // Instala esta librería desde el Administrador de Librerías de Arduino
 #include <Arduino_LSM6DS3.h>
 
-#define MAX_VALORS 20 // Quan arribem a aquest número de valors els enviarà al servidor
+#define MAX_VALORS 300 // Quan arribem a aquest número de valors els enviarà al servidor
 #define OFFSET 300 // Cada quants ms es fa una medició
 typedef struct
 {
@@ -19,7 +19,6 @@ typedef struct
 const char *ssid = "URV";                                                     // Nombre de  red WiFi
 const char *password = "UrbotsVibes";                                         // Contraseña de  red WiFi
 const char *serverUrl = "smarttechnologiesurv.000webhostapp.com";             // URL de la web para recibir los datos (cambia esto a la URL correcta)
-const char *worldTimeApiUrl = "http://worldtimeapi.org/api/timezone/Etc/UTC"; // URL de worldtimeapi.org
 
 dades_t valores[MAX_VALORS];
 long TIME;
